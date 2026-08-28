@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logo1.png" alt="Glide Banner" width="100%" style="border-radius: 20px; margin-bottom: 20px;"/>
+  <img src="Logos-icons/logo1.png" alt="Glide Banner" width="100%" style="border-radius: 20px; margin-bottom: 20px;"/>
   
   # 🌊 Glide: Autonomous Financial Engine
 
