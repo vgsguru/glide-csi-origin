@@ -1,279 +1,187 @@
-import { useCallback, useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import {
-  ChevronDown, ChevronUp, HardDrive, RefreshCw, Save, ShieldCheck, Smartphone,
-} from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ShieldCheck, HardDrive, Smartphone, Trash2, Download, QrCode, User as UserIcon, Check } from 'lucide-react';
 import clsx from 'clsx';
 
-import { api, formatCurrency, formatRelative, getBaseUrl, setBaseUrl } from '../api/client';
-import { ErrorState, LoadingState, Toast, container, item } from '../components/ui';
+export default function Profile() {
+  const [showQR, setShowQR] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-const OBJECTIVE_LABEL = {
-  buffer: 'Safety buffer',
-  obligations: 'Bills & obligations',
-  goals: 'Savings goals',
-  investing: 'Investing',
-  discretionary: 'Discretionary spending',
-};
-
-export default function Profile({ onChanged }) {
-  const [profile, setProfile] = useState(null);
-  const [risk, setRisk] = useState(50);
-  const [floor, setFloor] = useState(10000);
-  const [priorities, setPriorities] = useState([]);
-  const [baseUrl, setBase] = useState(getBaseUrl());
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-  const [toast, setToast] = useState(null);
-
-  const load = useCallback(async () => {
-    try {
-      const data = await api.getProfile();
-      setProfile(data);
-      setRisk(data.user.risk_tolerance);
-      setFloor(data.user.buffer_floor);
-      setPriorities(data.user.priorities);
-      setError(null);
-    } catch (err) {
-      setError(err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  function move(index, delta) {
-    const next = [...priorities];
-    const target = index + delta;
-    if (target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target], next[index]];
-    setPriorities(next);
-  }
-
-  async function save() {
-    setSaving(true);
-    try {
-      await api.updateProfile({ risk_tolerance: risk, buffer_floor: Number(floor), priorities });
-      // Re-run the agent so the effect of the change is immediately visible.
-      await api.tick(false);
-      setToast({ message: 'Saved — the agent re-ran with your new priorities', tone: 'success' });
-      onChanged?.();
-      await load();
-    } catch (err) {
-      setToast({ message: String(err.message), tone: 'error' });
-    } finally {
-      setSaving(false);
-      setTimeout(() => setToast(null), 3800);
-    }
-  }
-
-  if (loading) return <LoadingState label="Loading your settings…" />;
-  if (error && !profile) {
-    return <div className="mx-auto max-w-3xl p-6"><ErrorState error={error} onRetry={load} /></div>;
-  }
-
-  const dirty =
-    risk !== profile.user.risk_tolerance ||
-    Number(floor) !== profile.user.buffer_floor ||
-    priorities.join() !== profile.user.priorities.join();
+  // Mock save function
+  const handleSave = () => {
+    setIsSaving(true);
+    setTimeout(() => setIsSaving(false), 1000);
+  };
 
   return (
-    <motion.div
-      variants={container} initial="hidden" animate="show"
-      className="mx-auto w-full max-w-3xl space-y-5 p-6 pt-8"
-    >
-      <motion.div variants={item}>
-        <h1 className="mb-1 font-display text-4xl font-bold tracking-tight">Settings</h1>
-        <p className="text-[var(--muted-foreground)]">
-          These are the agent's inputs. Change them and its recommendations change.
-        </p>
-      </motion.div>
-
-      {/* ── Arbitrator inputs ───────────────────────────────────────────── */}
-      <motion.div variants={item} className="glass-strong rounded-3xl p-6 md:p-8">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-full bg-[var(--secondary)]">
-            <ShieldCheck className="h-5 w-5" />
+    <div className="max-w-4xl w-full mx-auto p-6 pt-24 space-y-8 pb-32">
+      
+      {/* Header & Identity */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+        <div className="flex items-center gap-5">
+          <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-black to-gray-500 dark:from-white dark:to-gray-300 flex items-center justify-center text-white dark:text-black shadow-lg">
+            <UserIcon className="w-8 h-8" />
           </div>
           <div>
-            <h2 className="font-display text-xl font-bold">Arbitration</h2>
-            <p className="text-xs text-[var(--muted-foreground)]">
-              How the agent resolves buffer vs. goals vs. investing.
-            </p>
+            <h1 className="text-4xl font-bold tracking-tight mb-1">Alex Morgan</h1>
+            <p className="text-black/60 dark:text-white/60 font-medium">alex.morgan@example.com</p>
           </div>
         </div>
+        
+        <button 
+          onClick={handleSave}
+          className="px-6 py-3 bg-black text-white dark:bg-white dark:text-black rounded-full font-semibold hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+        >
+          {isSaving ? <Check className="w-5 h-5" /> : 'Save Changes'}
+        </button>
+      </div>
 
-        {/* Risk */}
-        <div className="mb-8">
-          <label className="mb-3 flex justify-between text-sm font-medium">
-            <span>Risk tolerance</span>
-            <span className="font-bold">{risk}%</span>
-          </label>
-          <input
-            type="range" min="0" max="100" value={risk}
-            onChange={(e) => setRisk(Number(e.target.value))}
-            className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[var(--secondary)] accent-[var(--primary)]"
-          />
-          <div className="mt-2 flex justify-between text-xs font-medium uppercase tracking-wider text-[var(--muted-foreground)]">
-            <span>Conservative</span>
-            <span>Aggressive</span>
-          </div>
-          <p className="mt-3 text-xs text-[var(--muted-foreground)]">
-            Conservative weights protective objectives more heavily; aggressive lets the agent
-            favour growth over holding cash.
-          </p>
-        </div>
-
-        {/* Priorities */}
-        <div className="mb-8">
-          <label className="mb-1 block text-sm font-medium">Priority order</label>
-          <p className="mb-3 text-xs text-[var(--muted-foreground)]">
-            The waterfall the arbitrator walks. Highest first.
-          </p>
-          <div className="space-y-2">
-            {priorities.map((objective, index) => (
-              <div
-                key={objective}
-                className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--secondary)]/50 px-4 py-3"
-              >
-                <span className="grid h-6 w-6 flex-shrink-0 place-items-center rounded-full bg-[var(--primary)] text-xs font-bold text-[var(--primary-foreground)]">
-                  {index + 1}
-                </span>
-                <span className="flex-1 text-sm font-medium">
-                  {OBJECTIVE_LABEL[objective] || objective}
-                </span>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => move(index, -1)} disabled={index === 0}
-                    className="rounded-lg p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--accent)] disabled:opacity-20"
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => move(index, 1)} disabled={index === priorities.length - 1}
-                    className="rounded-lg p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--accent)] disabled:opacity-20"
-                  >
-                    <ChevronDown className="h-4 w-4" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        {/* Financial Profile */}
+        <div className="bg-white/40 dark:bg-black/40 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-3xl p-6 md:p-8 flex flex-col justify-between">
+          <div>
+            <h2 className="text-xl font-bold mb-6">Financial Context</h2>
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium opacity-70 mb-1.5">Income Archetype</label>
+                <select className="w-full bg-white/50 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-black dark:focus:border-white transition-colors appearance-none font-medium">
+                  <option>Freelancer / Contractor</option>
+                  <option>Gig Worker (Uber, Zomato)</option>
+                  <option>Salaried + Side Hustle</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium opacity-70 mb-1.5">Top Priorities (Protected)</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Emergency Buffer', 'House Rent', 'Mutual Fund SIP'].map(tag => (
+                    <span key={tag} className="px-3 py-1.5 bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 rounded-lg text-sm font-medium">
+                      {tag}
+                    </span>
+                  ))}
+                  <button className="px-3 py-1.5 border border-dashed border-black/30 dark:border-white/30 rounded-lg text-sm font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                    + Add Priority
                   </button>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
 
-        {/* Buffer floor */}
-        <div className="mb-6">
-          <label className="mb-1.5 block text-sm font-medium">Buffer floor</label>
-          <input
-            type="number" value={floor} min="0" step="500"
-            onChange={(e) => setFloor(e.target.value)}
-            className="glass w-full rounded-2xl px-4 py-3 text-sm focus:outline-none"
-          />
-          <p className="mt-2 text-xs text-[var(--muted-foreground)]">
-            Safe-to-spend is computed above this line. Currently {formatCurrency(profile.user.buffer_floor)}.
-          </p>
-        </div>
-
-        <button
-          onClick={save}
-          disabled={!dirty || saving}
-          className="inline-flex items-center gap-2 rounded-full bg-[var(--primary)] px-6 py-3 text-sm font-medium text-[var(--primary-foreground)] disabled:opacity-40"
-        >
-          {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {saving ? 'Re-running the agent…' : 'Save and re-run agent'}
-        </button>
-      </motion.div>
-
-      {/* ── Local engine ────────────────────────────────────────────────── */}
-      <motion.div variants={item} className="glass-strong rounded-3xl p-6 md:p-8">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-full bg-[var(--secondary)]">
-            <HardDrive className="h-5 w-5" />
+        {/* Engine Config */}
+        <div className="bg-white/40 dark:bg-black/40 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-3xl p-6 md:p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <HardDrive className="w-6 h-6" />
+            <h2 className="text-xl font-bold">Local LLM Engine</h2>
           </div>
-          <div>
-            <h2 className="font-display text-xl font-bold">Local LLM engine</h2>
-            <p className="text-xs text-[var(--muted-foreground)]">
-              Chat runs on your machine — nothing leaves it.
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex items-center justify-between rounded-2xl bg-[var(--secondary)]/50 px-4 py-3">
-            <span className="text-sm">Model</span>
-            <span className="flex items-center gap-2 text-sm font-medium">
-              <span className={clsx('h-1.5 w-1.5 rounded-full', profile.engine.available ? 'bg-green-500' : 'bg-red-500')} />
-              {profile.engine.model}
-              {profile.engine.parameter_size && (
-                <span className="text-xs text-[var(--muted-foreground)]">({profile.engine.parameter_size})</span>
-              )}
-            </span>
-          </div>
-          <div className="flex items-center justify-between rounded-2xl bg-[var(--secondary)]/50 px-4 py-3">
-            <span className="text-sm">Ollama host</span>
-            <code className="font-mono text-xs text-[var(--muted-foreground)]">{profile.engine.host}</code>
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">Backend API</label>
-            <div className="flex gap-2">
-              <input
-                value={baseUrl}
-                onChange={(e) => setBase(e.target.value)}
-                className="glass flex-1 rounded-2xl px-4 py-3 font-mono text-xs focus:outline-none"
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium opacity-70 mb-1.5">Ollama Endpoint URL</label>
+              <input 
+                type="text" 
+                defaultValue="http://127.0.0.1:11434"
+                className="w-full bg-white/50 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-black dark:focus:border-white transition-colors"
               />
-              <button
-                onClick={() => { setBaseUrl(baseUrl); setToast({ message: 'Backend URL updated', tone: 'success' }); setTimeout(() => setToast(null), 2500); }}
-                className="rounded-2xl bg-[var(--secondary)] px-4 text-sm font-medium"
+            </div>
+            <div>
+              <label className="block text-sm font-medium opacity-70 mb-1.5">Active Model</label>
+              <select className="w-full bg-white/50 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-black dark:focus:border-white transition-colors appearance-none font-medium">
+                <option>gemma4:12b (Recommended)</option>
+                <option>gemma4:e2b</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Risk & Priorities */}
+        <div className="bg-white/40 dark:bg-black/40 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-3xl p-6 md:p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <ShieldCheck className="w-6 h-6" />
+            <h2 className="text-xl font-bold">Arbitrator Rules</h2>
+          </div>
+          
+          <div className="space-y-6">
+            <div>
+              <label className="flex justify-between text-sm font-medium mb-3">
+                <span>Risk Tolerance</span>
+                <span className="font-bold">Conservative (20%)</span>
+              </label>
+              <input 
+                type="range" 
+                min="0" max="100" defaultValue="20"
+                className="w-full h-2 bg-black/10 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-black dark:accent-white"
+              />
+              <p className="text-xs opacity-60 mt-3 leading-relaxed">
+                At Conservative, the AI will aggressively suppress discretionary spending if irregular income drops, heavily prioritizing your Emergency Buffer.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          {/* Android Client sync */}
+          <div className="bg-white/40 dark:bg-black/40 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-3xl p-6 md:p-8 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-full bg-black/5 dark:bg-white/5">
+                  <Smartphone className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Android Sync</h3>
+                  <p className="text-sm opacity-60">Status: Disconnected</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowQR(!showQR)}
+                className={clsx(
+                  "px-4 py-2 rounded-full border border-black/20 dark:border-white/20 transition-all font-medium text-sm flex items-center gap-2",
+                  showQR ? "bg-black text-white dark:bg-white dark:text-black" : "hover:bg-black/5 dark:hover:bg-white/5"
+                )}
               >
-                Set
+                <QrCode className="w-4 h-4" />
+                {showQR ? 'Hide' : 'Pair'}
+              </button>
+            </div>
+            
+            <AnimatePresence>
+              {showQR && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-6 mt-4 border-t border-black/10 dark:border-white/10 flex flex-col items-center justify-center">
+                    <div className="w-32 h-32 bg-white p-2 rounded-xl mb-4 shadow-sm border border-black/5">
+                      {/* Placeholder for actual QR code */}
+                      <div className="w-full h-full border-4 border-black border-dashed flex items-center justify-center opacity-30">QR</div>
+                    </div>
+                    <p className="text-xs text-center opacity-60 max-w-[200px]">
+                      Scan this QR with the Glide Android App to securely link SMS forwarding to this local IP.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Danger Zone */}
+          <div className="bg-red-500/5 border border-red-500/20 rounded-3xl p-6 md:p-8">
+            <h3 className="text-red-500 font-bold mb-4">Data & Privacy</h3>
+            <div className="flex flex-col gap-3">
+              <button className="w-full px-4 py-3 bg-white/50 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-black/5 transition-colors">
+                <Download className="w-4 h-4" /> Export Financial State (JSON)
+              </button>
+              <button className="w-full px-4 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors">
+                <Trash2 className="w-4 h-4" /> Wipe Local Database
               </button>
             </div>
           </div>
         </div>
-      </motion.div>
 
-      {/* ── Paired devices ─────────────────────────────────────────────── */}
-      <motion.div variants={item} className="glass rounded-3xl p-6">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-full bg-[var(--secondary)]">
-            <Smartphone className="h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="font-display text-base font-bold">Android capture client</h3>
-            <p className="text-xs text-[var(--muted-foreground)]">
-              {profile.devices.length > 0
-                ? `${profile.devices.length} device paired`
-                : 'No device has synced yet'}
-            </p>
-          </div>
-        </div>
-
-        {profile.devices.length > 0 && (
-          <div className="space-y-2">
-            {profile.devices.map((device) => (
-              <div key={device.id} className="flex items-center justify-between rounded-2xl bg-[var(--secondary)]/50 px-4 py-3">
-                <div>
-                  <div className="text-sm font-medium">{device.label}</div>
-                  <div className="text-xs text-[var(--muted-foreground)]">
-                    {device.messages_ingested} messages · last sync {formatRelative(device.last_sync_at)}
-                  </div>
-                </div>
-                <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-green-600 dark:text-green-400">
-                  paired
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <p className="mt-4 text-xs text-[var(--muted-foreground)]">
-          {profile.transaction_count} transactions in your ledger.
-        </p>
-      </motion.div>
-
-      <Toast message={toast?.message} tone={toast?.tone} />
-    </motion.div>
+      </div>
+    </div>
   );
 }

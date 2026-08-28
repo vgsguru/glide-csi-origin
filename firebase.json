@@ -1,16 +1,15 @@
 {
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
   "hosting": {
     "public": "web/dist",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [{ "source": "**", "destination": "/index.html" }],
-    "headers": [
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
       {
-        "source": "**/*.@(js|css|png|jpg|svg|woff2)",
-        "headers": [{ "key": "Cache-Control", "value": "max-age=31536000, immutable" }]
+        "source": "**",
+        "destination": "/index.html"
       }
     ]
   }
