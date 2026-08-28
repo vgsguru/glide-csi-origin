@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <string name="app_name">Glide</string>
+    <string name="default_web_client_id" translatable="false">122468222330-26iun9m07r4sgkp6e81mgem3371scqjs.apps.googleusercontent.com</string>
+    <string name="gcm_defaultSenderId" translatable="false">122468222330</string>
+    <string name="google_api_key" translatable="false">AIzaSyDp4GI6Jf5rfoww3faRj_B0UP4i_HL5sSA</string>
+    <string name="google_app_id" translatable="false">1:122468222330:android:e01436d7808a656b06c2c3</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyDp4GI6Jf5rfoww3faRj_B0UP4i_HL5sSA</string>
+    <string name="google_storage_bucket" translatable="false">manage-buddy.firebasestorage.app</string>
+    <string name="project_id" translatable="false">manage-buddy</string>
+    <style name="Theme.Glide" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#141414</item>
+        <item name="android:navigationBarColor">#141414</item>
+        <item name="android:windowBackground">#141414</item>
+    </style>
+</resources>

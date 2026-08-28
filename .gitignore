@@ -1,0 +1,11 @@
+.access_token
+web/dist/
+backend/venv/
+backend/glide.db
+backend/test_glide.db
+android/local.properties
+android/app/glide-release.jks
+node_modules/
+__pycache__/
+*.pyc
+.env

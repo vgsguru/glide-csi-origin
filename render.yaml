@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: glide-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: GLIDE_SECRET_KEY
+        generateValue: true
+      - key: OLLAMA_HOST
+        value: https://ollama.com
+      - key: GLIDE_MODEL
+        value: gemma4:31b-cloud
+      - key: OLLAMA_API_KEY
+        sync: false     # set this in the Render dashboard, never in git

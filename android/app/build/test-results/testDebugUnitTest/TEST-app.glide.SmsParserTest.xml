@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="app.glide.SmsParserTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-08-28T17:52:13" hostname="GURU-STUDIO-LAP" time="0.155">
+  <properties/>
+  <testcase name="parses an SBI credit and keeps the full payer name" classname="app.glide.SmsParserTest" time="0.068"/>
+  <testcase name="rejects OTP promotional reminder and failed messages" classname="app.glide.SmsParserTest" time="0.001"/>
+  <testcase name="parses a Paytm payment and strips the trailing clause" classname="app.glide.SmsParserTest" time="0.003"/>
+  <testcase name="does not mistake available for a health keyword" classname="app.glide.SmsParserTest" time="0.007"/>
+  <testcase name="segregates a month of inbox into categories income and obligations" classname="app.glide.SmsParserTest" time="0.066"/>
+  <testcase name="collapses duplicate alerts for the same payment" classname="app.glide.SmsParserTest" time="0.006"/>
+  <testcase name="parses an HDFC UPI debit" classname="app.glide.SmsParserTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,13 @@
+# Glide backend — Flask + SQLAlchemy + SQLite.
+# Auth needs no extra packages: werkzeug (a Flask dependency) hashes passwords
+# and itsdangerous (also bundled) signs the bearer tokens.
+Flask==3.1.3
+Flask-Cors==6.0.5
+SQLAlchemy==2.0.27
+requests==2.32.3
+
+# Optional, for running the tests with pytest instead of `python tests/test_core.py`
+# pytest==8.3.3
+
+# Production WSGI server (Linux hosts only; not needed for local dev on Windows)
+gunicorn==23.0.0
