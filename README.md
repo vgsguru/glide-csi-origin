@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://images.unsplash.com/photo-1618042164219-62c820f10723?q=80&w=800&auto=format&fit=crop" alt="Glide Banner" width="100%" style="border-radius: 20px; margin-bottom: 20px;"/>
+  <img src="assets/logo.jpg" alt="Glide Banner" width="100%" style="border-radius: 20px; margin-bottom: 20px;"/>
   
   # 🌊 Glide: Autonomous Financial Engine
 
