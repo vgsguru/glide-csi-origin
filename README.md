@@ -161,6 +161,15 @@ the Play-Services-backed variant).
 
 ---
 
+## Documentation
+
+- **[Technical documentation](docs/DOCUMENTATION.md)** — architecture, algorithms, data model,
+  the agent loop, and every constant with the reason it has that value.
+- **[Pitch script](docs/PITCH.md)** — 3- and 5-minute presenter scripts, demo choreography and
+  Q&A prep.
+
+---
+
 ## Running it
 
 ```bash
