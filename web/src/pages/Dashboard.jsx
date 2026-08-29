@@ -81,12 +81,15 @@ export default function Dashboard({ user }) {
         <div>
           <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[var(--secondary)] px-3 py-1 text-xs font-medium text-[var(--muted-foreground)]">
             <Sparkles className="h-3 w-3" />
-            gemma4:12b · running locally
+            {state.source === 'cloud'
+              ? 'Parsed on your phone · synced'
+              : 'Local backend · agent online'}
           </div>
           <h1 className="mb-1 font-display text-4xl font-bold tracking-tight">Financial State</h1>
           <p className="text-[var(--muted-foreground)]">
             {firstName ? `${firstName} — ` : ''}
-            {state.transaction_count} transactions modelled over 90 days.
+            {state.transaction_count} transactions
+            {state.messages_scanned ? ` from ${state.messages_scanned} messages` : ''}.
           </p>
         </div>
 
@@ -117,8 +120,12 @@ export default function Dashboard({ user }) {
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[var(--muted-foreground)]">
             <span>Balance {formatCurrency(sts.components.balance)}</span>
-            <span>+ conservative inflow {formatCurrency(sts.components.expected_inflow_conservative)}</span>
-            <span>− obligations {formatCurrency(sts.components.committed_obligations)}</span>
+            {sts.components.expected_inflow_conservative > 0 && (
+              <span>+ conservative inflow {formatCurrency(sts.components.expected_inflow_conservative)}</span>
+            )}
+            {sts.components.committed_obligations > 0 && (
+              <span>− obligations {formatCurrency(sts.components.committed_obligations)}</span>
+            )}
             <span>− floor {formatCurrency(sts.components.buffer_floor)}</span>
           </div>
 

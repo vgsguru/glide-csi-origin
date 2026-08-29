@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, getToken, setToken } from '../api/client';
+import { cloudSignIn, cloudSignUp, cloudSignOut, cloudUser } from '../api/cloud';
 
 const STORAGE_USER = 'glide_auth_user';
 
@@ -29,10 +30,14 @@ export function useAuth() {
   useEffect(() => {
     let cancelled = false;
     async function revalidate() {
+      // Firebase is the identity of record. A cloud session is enough to be
+      // signed in; the backend token, when present, only unlocks the agent view.
+      const cloud = cloudUser();
       if (!getToken()) {
         if (!cancelled) {
-          setUser(null);
-          persist(null);
+          const session = cloud ? { ...cloud, isNew: false, onboarded: true } : null;
+          setUser(session);
+          persist(session);
           setLoading(false);
         }
         return;
@@ -47,8 +52,9 @@ export function useAuth() {
       } catch {
         if (!cancelled) {
           setToken(null);
-          setUser(null);
-          persist(null);
+          const session = cloud ? { ...cloud, isNew: false, onboarded: true } : null;
+          setUser(session);
+          persist(session);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -59,24 +65,35 @@ export function useAuth() {
   }, []);
 
   const signUp = useCallback(async (email, password, name) => {
-    const result = await api.signup(email, password, name);
-    setToken(result.token);
-    const session = { ...result.user, isNew: true };
+    const cloud = await cloudSignUp(email, password, name);
+    try {
+      const result = await api.signup(email, password, name);
+      setToken(result.token);
+    } catch {
+      // No backend reachable. Expected in a deployed build.
+    }
+    const session = { ...cloud, isNew: true, onboarded: false };
     setUser(session);
     persist(session);
     return session;
   }, []);
 
   const signIn = useCallback(async (email, password) => {
-    const result = await api.login(email, password);
-    setToken(result.token);
-    const session = { ...result.user, isNew: result.is_new };
+    const cloud = await cloudSignIn(email, password);
+    try {
+      const result = await api.login(email, password);
+      setToken(result.token);
+    } catch {
+      // No backend reachable. The cloud ledger is the one that matters.
+    }
+    const session = { ...cloud, isNew: false, onboarded: true };
     setUser(session);
     persist(session);
     return session;
   }, []);
 
   const signOut = useCallback(() => {
+    cloudSignOut();
     setToken(null);
     setUser(null);
     persist(null);
@@ -99,6 +116,7 @@ export function useAuth() {
 
   const refresh = useCallback(async () => {
     try {
+      if (!getToken()) return cloudUser();
       const { user: fresh } = await api.me();
       const session = { ...fresh, isNew: !fresh.onboarded };
       setUser(session);

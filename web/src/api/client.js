@@ -3,6 +3,8 @@
  * Base URL is overridable so the web app can point at a LAN backend.
  */
 
+import { cloudDashboardState, cloudUser, cloudChat, cloudSuggestions } from './cloud';
+
 const STORAGE_TOKEN = 'glide_token';
 const STORAGE_BASE = 'glide_api_base';
 
@@ -81,6 +83,30 @@ async function request(path, { method = 'GET', body, auth = true, timeout = 1800
   return payload;
 }
 
+/**
+ * Backend-optional wrappers.
+ *
+ * The Flask service lives on localhost, so a deployed build can never reach
+ * it. Anything that has a cloud equivalent falls back to Firestore; anything
+ * that is genuinely backend-only resolves empty so the page renders a real
+ * empty state instead of an error wall.
+ */
+async function orCloud(backendCall, cloudCall) {
+  try {
+    return await backendCall();
+  } catch {
+    return await cloudCall();
+  }
+}
+
+async function orEmpty(backendCall, fallback) {
+  try {
+    return await backendCall();
+  } catch {
+    return fallback;
+  }
+}
+
 export const api = {
   health: () => request('/health', { auth: false }),
 
@@ -92,11 +118,13 @@ export const api = {
   me: () => request('/auth/me'),
 
   // --- profile ------------------------------------------------------------
-  getProfile: () => request('/profile'),
-  updateProfile: (patch) => request('/profile', { method: 'PATCH', body: patch }),
+  getProfile: () => orEmpty(() => request('/profile'), { user: cloudUser() || {} }),
+  updateProfile: (patch) =>
+    orEmpty(() => request('/profile', { method: 'PATCH', body: patch }), { user: { ...(cloudUser() || {}), ...patch } }),
 
   // --- state --------------------------------------------------------------
-  dashboardState: (days = 30) => request(`/dashboard/state?days=${days}`),
+  dashboardState: (days = 30) =>
+    orCloud(() => request(`/dashboard/state?days=${days}`), () => cloudDashboardState()),
   projection: (days = 30) => request(`/dashboard/projection?days=${days}`),
   timeline: (days = 30) => request(`/dashboard/timeline?days=${days}`),
   obligations: () => request('/obligations'),
@@ -104,24 +132,28 @@ export const api = {
   // --- transactions -------------------------------------------------------
   transactions: (params = {}) => {
     const query = new URLSearchParams(params).toString();
-    return request(`/transactions${query ? `?${query}` : ''}`);
+    // Per-transaction rows never leave the phone, so the cloud path has none.
+    return orEmpty(() => request(`/transactions${query ? `?${query}` : ''}`), { transactions: [] });
   },
   createTransaction: (txn) => request('/transactions', { method: 'POST', body: txn }),
   updateTransaction: (id, patch) => request(`/transactions/${id}`, { method: 'PATCH', body: patch }),
   reviewQueue: () => request('/transactions/review'),
 
   // --- agent --------------------------------------------------------------
-  insights: (status = 'active') => request(`/insights?status=${status}`),
+  insights: (status = 'active') =>
+    orEmpty(() => request(`/insights?status=${status}`), { insights: [] }),
   dismissInsight: (id) => request(`/insights/${id}/dismiss`, { method: 'POST' }),
   actInsight: (id) => request(`/insights/${id}/act`, { method: 'POST' }),
-  tick: (useLlm = false) => request('/agent/tick', { method: 'POST', body: { use_llm: useLlm } }),
-  agentRuns: (limit = 25) => request(`/agent/runs?limit=${limit}`),
+  tick: (useLlm = false) =>
+    orEmpty(() => request('/agent/tick', { method: 'POST', body: { use_llm: useLlm } }), { surfaced: [] }),
+  agentRuns: (limit = 25) => orEmpty(() => request(`/agent/runs?limit=${limit}`), { runs: [] }),
 
   // --- chat ---------------------------------------------------------------
-  chat: (message) => request('/chat', { method: 'POST', body: { message } }),
-  chatHistory: () => request('/chat/history'),
+  chat: (message) =>
+    orCloud(() => request('/chat', { method: 'POST', body: { message } }), () => cloudChat(message)),
+  chatHistory: () => orEmpty(() => request('/chat/history'), { messages: [] }),
   clearChat: () => request('/chat/history', { method: 'DELETE' }),
-  chatSuggestions: () => request('/chat/suggestions'),
+  chatSuggestions: () => orCloud(() => request('/chat/suggestions'), () => cloudSuggestions()),
 
   // --- ingestion ----------------------------------------------------------
   ingestSms: (body, sender) => request('/sms/ingest', { method: 'POST', body: { body, sender } }),
