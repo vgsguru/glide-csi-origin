@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import app.glide.AuthState
 import app.glide.VoiceStatus
 import app.glide.data.SmsAnalysis
 import app.glide.ui.components.*
@@ -34,6 +35,8 @@ import app.glide.ui.theme.GlideTheme
 @Composable
 fun ProfileScreen(
     analysis: SmsAnalysis,
+    auth: AuthState,
+    cloudSynced: Boolean,
     voice: VoiceStatus,
     engineLabel: String,
     bufferFloor: Double,
@@ -42,6 +45,7 @@ fun ProfileScreen(
     onWindowDaysChange: (Int) -> Unit,
     onVoiceEnabledChange: (Boolean) -> Unit,
     onPreviewVoice: () -> Unit,
+    onSignOut: () -> Unit,
 ) {
     val colors = GlideTheme.colors
     var floorDraft by remember(bufferFloor) { mutableStateOf(bufferFloor.toInt().toString()) }
@@ -61,6 +65,66 @@ fun ProfileScreen(
             )
             Text(
                 "How far back Glide reads, and the floor it protects.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.muted,
+            )
+        }
+
+        // ── Account ───────────────────────────────────────────────────────
+        GlassCard(Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(colors.secondary),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        (auth.name ?: auth.email ?: "G").take(1).uppercase(),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        auth.name ?: if (auth.guest) "Guest" else "Signed in",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Text(
+                        auth.email ?: "Using Glide without an account",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.muted,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            StatusRow("Account", if (auth.guest) "guest" else "email", colors.muted)
+            StatusRow("Ledger", "${analysis.parsed} transactions", colors.muted)
+
+            Spacer(Modifier.height(14.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(colors.negative.copy(alpha = 0.12f))
+                    .clickable(onClick = onSignOut)
+                    .padding(vertical = 14.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    if (auth.guest) "Sign in to an account" else "Sign out",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = colors.negative,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Signing out clears your account from this phone. Your settings and " +
+                    "scanned bills stay; your messages were never uploaded.",
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.muted,
             )
@@ -185,6 +249,14 @@ fun ProfileScreen(
             StatusRow("Ignored as promo or OTP", analysis.rejected.toString())
             StatusRow("Recurring payments", analysis.obligations.size.toString())
             StatusRow("Assistant", engineLabel, colors.positive)
+            // Whether the headset can see these figures. Not dev trivia: it is
+            // the difference between the Quest showing your money and showing
+            // nothing at all.
+            StatusRow(
+                "Visible on your headset",
+                if (cloudSynced) "yes" else "not yet",
+                if (cloudSynced) colors.positive else colors.muted,
+            )
             Spacer(Modifier.height(12.dp))
             Text(
                 "Your messages are read and categorised on this phone. Nothing is " +

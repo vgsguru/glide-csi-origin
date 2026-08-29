@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Glide VR</title>
+<meta name="description" content="Your money, at arm's length. The Glide copilot in VR." />
+<link rel="manifest" href="./manifest.webmanifest" />
+<meta name="theme-color" content="#141414" />
+<link rel="icon" href="./icons/icon-192.png" />
+<link rel="apple-touch-icon" href="./icons/icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #141414; --fg: #FAFAFA; --muted: #A6A6A6;
+    --glass: rgba(255,255,255,0.06); --border: rgba(255,255,255,0.12);
+    --negative: #F87171; --positive: #4ADE80;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  canvas { display: block; }
+
+  #shell {
+    position: fixed; inset: 0; display: grid; place-items: center; padding: 24px;
+    background:
+      radial-gradient(1100px 700px at 20% -10%, rgba(96,165,250,0.13), transparent 60%),
+      radial-gradient(900px 600px at 100% 110%, rgba(192,132,252,0.12), transparent 60%),
+      var(--bg);
+    overflow-y: auto; z-index: 10;
+  }
+  #shell[hidden] { display: none; }
+
+  .card {
+    width: min(440px, 100%); background: var(--glass); border: 1px solid var(--border);
+    border-radius: 28px; padding: 32px; backdrop-filter: blur(20px);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
+  .brand img { width: 38px; height: 38px; border-radius: 10px; }
+  .brand b { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+  .brand span { color: var(--muted); font-size: 13px; border: 1px solid var(--border);
+    padding: 3px 9px; border-radius: 999px; }
+
+  h1 { font-family: 'Space Grotesk', sans-serif; font-size: 27px; font-weight: 600;
+    margin: 0 0 6px; letter-spacing: -0.6px; }
+  p.sub { color: var(--muted); font-size: 14px; margin: 0 0 24px; line-height: 1.5; }
+
+  label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 6px;
+    text-transform: uppercase; letter-spacing: 1.4px; font-weight: 600; }
+  input {
+    width: 100%; padding: 15px 16px; margin-bottom: 15px; border-radius: 14px;
+    border: 1px solid var(--border); background: rgba(255,255,255,0.05);
+    color: var(--fg); font-size: 16px; font-family: inherit;
+  }
+  input:focus { outline: none; border-color: rgba(255,255,255,0.32); }
+
+  button {
+    width: 100%; padding: 16px; border-radius: 999px; border: 0; cursor: pointer;
+    font-size: 15px; font-weight: 600; font-family: inherit;
+    background: var(--fg); color: #141414; transition: opacity .16s ease;
+  }
+  button:disabled { opacity: .45; cursor: default; }
+  button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .row { display: flex; gap: 10px; margin-top: 10px; }
+  .row button { margin: 0; }
+
+  .msg { font-size: 13.5px; margin: 14px 0 0; line-height: 1.5; }
+  .msg.err { color: var(--negative); }
+  .msg.ok { color: var(--positive); }
+  .toggle { text-align: center; margin-top: 20px; font-size: 13.5px; color: var(--muted); }
+  .toggle a { color: var(--fg); text-decoration: none; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .foot { margin-top: 22px; font-size: 12px; color: var(--muted); line-height: 1.6; text-align: center; }
+</style>
+</head>
+<body>
+
+<div id="shell">
+  <div class="card">
+    <div class="brand">
+      <img src="./icons/icon-192.png" alt="" />
+      <b>Glide</b><span>VR</span>
+    </div>
+
+    <div id="view-auth">
+      <h1 id="auth-title">Sign in</h1>
+      <p class="sub">Use the same account as the Glide app on your phone. The headset reads
+        what your phone has already worked out — it never reads your messages itself.</p>
+
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="username" placeholder="you@example.com" />
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+
+      <button id="submit">Sign in</button>
+      <p class="msg err" id="auth-error" hidden></p>
+      <div class="toggle">
+        <span id="toggle-label">No account yet?</span>
+        <a id="toggle">Create one</a>
+      </div>
+    </div>
+
+    <div id="view-ready" hidden>
+      <h1>Ready</h1>
+      <p class="sub" id="ready-sub">Signed in.</p>
+      <button id="enter-ar">Enter passthrough</button>
+      <div style="height:10px"></div>
+      <button class="ghost" id="enter">Enter VR (dark room)</button>
+      <div class="row">
+        <button class="ghost" id="preview">Preview on screen</button>
+        <button class="ghost" id="signout">Sign out</button>
+      </div>
+      <p class="msg" id="ready-msg" hidden></p>
+      <p class="foot">
+        Say <b>“Hey Glide”</b> and ask anything, or <b>squeeze</b> to talk.<br />
+        <b>Trigger</b> a panel or the tab bar to bring it forward;
+        <b>thumbstick</b> left/right moves between tabs.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 package app.glide
 
+import app.glide.data.ParsedSms
 import app.glide.data.RawSms
 import app.glide.data.SmsAnalyzer
 import app.glide.data.SmsParser
@@ -156,6 +157,91 @@ class SmsParserTest {
         assertTrue(result.income.p50 < result.income.p90)
         assertEquals(3, result.income.depositCount)
     }
+
+    // --- cash reconciliation ------------------------------------------------
+
+    @Test
+    fun `an ATM withdrawal is not double counted when the cash is spent`() {
+        val inbox = listOf(
+            RawSms(
+                "Rs.5,000.00 withdrawn from A/c XX4521 at ATM SBI KORAMANGALA on 27-08-2026. " +
+                    "Avl Bal Rs.20,000.00. -SBI",
+                "JD-SBIINB", day(3),
+            )
+        )
+        // Two cash bills scanned against that withdrawal.
+        val bills = listOf(
+            cashEntry(800.0, "CAFE MOCHA", "Food", day(2)),
+            cashEntry(400.0, "AUTO RICKSHAW", "Transport", day(1)),
+        )
+
+        val result = SmsAnalyzer.analyze(inbox, windowDays = 30, manualEntries = bills)
+
+        // Rs.5,000 left the bank. The bills say where Rs.1,200 of it went; they
+        // are not additional spending on top of the withdrawal.
+        assertEquals(5000.0, result.totalOut, 0.01)
+        assertEquals(5000.0, result.cash.withdrawn, 0.01)
+        assertEquals(1200.0, result.cash.allocated, 0.01)
+        assertEquals(3800.0, result.cash.unallocated, 0.01)
+
+        // The logged part carries a real category; the rest is named honestly.
+        val categories = result.categories.associate { it.category to it.amount }
+        assertEquals(800.0, categories["Food"] ?: 0.0, 0.01)
+        assertEquals(400.0, categories["Transport"] ?: 0.0, 0.01)
+        assertEquals(3800.0, categories["Cash in hand"] ?: 0.0, 0.01)
+
+        // Categories must still account for exactly the money that went out.
+        assertEquals(result.totalOut, result.categories.sumOf { it.amount }, 0.01)
+    }
+
+    @Test
+    fun `unlogged cash is reported as spending once it ages`() {
+        val inbox = listOf(
+            RawSms(
+                "Rs.2,000.00 withdrawn from A/c XX4521 at ATM HDFC INDIRANAGAR on 01-08-2026. " +
+                    "Avl Bal Rs.9,000.00. -HDFC Bank",
+                "VM-HDFCBK", day(40),   // well past the 14-day aging window
+            )
+        )
+        val result = SmsAnalyzer.analyze(inbox, windowDays = 90)
+
+        assertEquals(2000.0, result.cash.withdrawn, 0.01)
+        assertEquals(0.0, result.cash.allocated, 0.01)
+        assertEquals(2000.0, result.cash.aged, 0.01)
+        assertTrue("old cash should stop being called 'in hand'",
+            result.categories.any { it.category == "Cash spent, not logged" })
+    }
+
+    @Test
+    fun `cash spent beyond what was withdrawn still counts as spending`() {
+        val inbox = listOf(
+            RawSms(
+                "Rs.500.00 withdrawn from A/c XX4521 at ATM AXIS HSR on 27-08-2026. " +
+                    "Avl Bal Rs.4,000.00. -Axis Bank",
+                "AD-AXISBK", day(3),
+            )
+        )
+        // Rs.900 of cash bills against a Rs.500 withdrawal: Rs.400 came from
+        // money this app never saw, so it is genuinely extra spending.
+        val bills = listOf(cashEntry(900.0, "LOCAL MARKET", "Food", day(2)))
+
+        val result = SmsAnalyzer.analyze(inbox, windowDays = 30, manualEntries = bills)
+
+        assertEquals(900.0, result.totalOut, 0.01)
+        assertEquals(500.0, result.cash.allocated, 0.01)
+        assertEquals(0.0, result.cash.unallocated, 0.01)
+    }
+
+    private fun cashEntry(
+        amount: Double,
+        merchant: String,
+        category: String,
+        at: Long,
+    ) = ParsedSms(
+        amount = amount, direction = "DEBIT", merchant = merchant, category = category,
+        channel = "CASH", accountHint = "OCR", reference = null, balanceAfter = null,
+        occurredAt = at, confidence = 0.99, sender = "OCR", raw = "scanned bill",
+    )
 
     @Test
     fun `collapses duplicate alerts for the same payment`() {

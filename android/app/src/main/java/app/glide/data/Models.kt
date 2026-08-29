@@ -59,6 +59,34 @@ data class DaySpend(
     val outflow: Double,
 )
 
+/**
+ * Cash drawn from an ATM, and how much of it has been accounted for.
+ *
+ * Money leaves the *bank* at withdrawal and leaves the *wallet* at purchase.
+ * Counting both as spending double-books it, so a withdrawal is treated as a
+ * transfer into this pool, and logged cash purchases draw the pool down and
+ * give it a category. Whatever is still unallocated after [agingDays] stops
+ * being "cash in hand" and is reported as spending we simply cannot categorise.
+ */
+data class CashPosition(
+    val withdrawn: Double = 0.0,
+    val allocated: Double = 0.0,
+    val unallocated: Double = 0.0,
+    val aged: Double = 0.0,
+    val withdrawalCount: Int = 0,
+    val purchaseCount: Int = 0,
+    val oldestUnreconciledAt: Long? = null,
+    val agingDays: Int = 14,
+) {
+    val hasCash: Boolean get() = withdrawn > 0
+    val reconciledShare: Double
+        get() = if (withdrawn > 0) (allocated / withdrawn).coerceIn(0.0, 1.0) else 0.0
+    val daysSinceOldest: Int?
+        get() = oldestUnreconciledAt?.let {
+            ((System.currentTimeMillis() - it) / 86_400_000L).toInt()
+        }
+}
+
 data class IncomeBand(
     val p10: Double,
     val p50: Double,
@@ -91,6 +119,7 @@ data class SmsAnalysis(
     val dailyRunRate: Double,
     val averageConfidence: Double,
     val lowConfidenceCount: Int,
+    val cash: CashPosition = CashPosition(),
 ) {
     companion object {
         val EMPTY = SmsAnalysis(

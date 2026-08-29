@@ -1,9 +1,22 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.gms.google-services")
 }
+
+
+// Keys come from android/local.properties (gitignored) so they never land in
+// the repo. Missing values build fine and simply leave the assistant
+// unconfigured, which keeps a fresh clone compiling.
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun secret(name: String): String =
+    (localProps.getProperty(name) ?: System.getenv(name) ?: "")
 
 android {
     namespace = "app.glide"
@@ -14,6 +27,8 @@ android {
         // Firebase project "manage-buddy". The Kotlin package stays app.glide;
         // only the installed application id changes.
         applicationId = "glide2.com"
+        buildConfigField("String", "GROQ_API_KEY", "\"${secret("GROQ_API_KEY")}\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"${secret("GEMINI_API_KEY")}\"")
         minSdk = 24
         targetSdk = 35
         versionCode = 1
@@ -59,6 +74,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 

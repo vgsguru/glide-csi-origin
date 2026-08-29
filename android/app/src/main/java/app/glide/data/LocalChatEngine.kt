@@ -102,7 +102,50 @@ object LocalChatEngine {
     // Deterministic answers
     // -----------------------------------------------------------------------
 
+    private val GREETINGS = listOf(
+        "hi", "hii", "hey", "hello", "yo", "hai", "namaste", "good morning",
+        "good afternoon", "good evening", "how are you", "how r u", "whats up",
+        "what's up", "sup", "how you doing", "how do you do",
+    )
+    private val PLEASANTRIES = listOf(
+        "thanks", "thank you", "thx", "ty", "cheers", "nice", "cool", "great",
+        "ok", "okay", "bye", "goodbye", "good night", "see you",
+    )
+
+    /**
+     * Small talk deserves small talk.
+     *
+     * Someone saying "hi" is not asking for a balance report, and answering one
+     * with the other is the fastest way to make an assistant feel robotic. These
+     * replies carry no grounding panel, because there are no figures in them.
+     */
+    fun smallTalk(question: String): Answer? {
+        val low = question.lowercase(Locale.ROOT).trim().trim('!', '.', '?', ',')
+        if (low.length > 40) return null
+
+        val isGreeting = GREETINGS.any { low == it || low.startsWith("$it ") || low.endsWith(" $it") }
+        val isPleasantry = PLEASANTRIES.any { low == it || low.startsWith("$it ") }
+
+        val text = when {
+            low.contains("how are you") || low.contains("how r u") || low.contains("how you doing") ->
+                "Doing well, thanks! How can I help you today?"
+            isGreeting ->
+                "Hi! How can I help you today?"
+            low.startsWith("thank") || low == "thx" || low == "ty" || low == "cheers" ->
+                "Anytime."
+            low.startsWith("bye") || low.startsWith("good night") || low.startsWith("see you") ->
+                "Talk soon."
+            isPleasantry -> "Glad that helps."
+            low.contains("who are you") || low.contains("what are you") || low.contains("what can you do") ->
+                "I am Glide. I read your bank messages on this phone and answer questions about " +
+                    "your spending, income and what is safe to spend."
+            else -> return null
+        }
+        return Answer(text, emptyList(), matchedRule = true)
+    }
+
     fun ruleAnswer(question: String, analysis: SmsAnalysis, bufferFloor: Double): Answer? {
+        smallTalk(question)?.let { return it }
         val low = question.lowercase(Locale.ROOT)
         val sts = safeToSpend(analysis, bufferFloor)
         val obligationTotal = analysis.obligations.sumOf { it.expectedAmount }
@@ -281,14 +324,36 @@ object LocalChatEngine {
         return true
     }
 
+    /**
+     * Glide talks like a person who happens to know your finances.
+     *
+     * The earlier version treated every message as a money question, so "hi, how
+     * are you" came back as a balance report. That is not a copilot, it is a
+     * vending machine. Small talk now gets small talk; the figures come out when
+     * the question is actually about money.
+     *
+     * The one thing that never relaxes is the numbers: any figure must come from
+     * the CONTEXT block, and the numeral guard enforces that independently.
+     */
     const val SYSTEM_PROMPT: String =
-        "You are Glide, an agentic financial copilot for people with variable income in India.\n" +
-            "ABSOLUTE RULES:\n" +
-            "1. Use ONLY the figures in the CONTEXT block. Never invent, estimate, or extrapolate a number.\n" +
-            "2. If the context does not contain what is needed, say so plainly.\n" +
-            "3. Write amounts as Rs.X (no currency symbol).\n" +
-            "4. Be concise: 2-4 sentences, plain English, no markdown, no bullet lists, no emoji.\n" +
-            "5. Always name the figures you used, so the user can check you.\n" +
-            "6. You are not a licensed financial adviser; describe the user's own numbers rather " +
-            "than recommending specific financial products."
+        "You are Glide, a financial copilot for people with variable income in India. " +
+            "You are warm, brief and natural -- a knowledgeable friend, not a report generator.\n\n" +
+            "HOW TO TALK:\n" +
+            "- Greetings and small talk ('hi', 'how are you', 'thanks', 'good morning') get a " +
+            "short, friendly, human reply. Do NOT recite balances or transactions at someone who " +
+            "just said hello. One line is plenty, and you may offer to help.\n" +
+            "- Questions about money get a real answer built from the CONTEXT figures.\n" +
+            "- If asked something you genuinely cannot know from the context, say so simply and " +
+            "offer what you can answer instead.\n" +
+            "- General questions that are not about this person's money can be answered briefly " +
+            "and honestly, then gently brought back to what you are actually useful for.\n\n" +
+            "ABOUT NUMBERS (these never relax):\n" +
+            "1. Every figure you state must appear in the CONTEXT block. Never invent, estimate " +
+            "or extrapolate one.\n" +
+            "2. Write amounts as Rs.X (no currency symbol).\n" +
+            "3. When you use figures, name them, so the person can check you.\n" +
+            "4. You are not a licensed financial adviser. Describe this person's own numbers " +
+            "rather than recommending specific financial products.\n\n" +
+            "STYLE: plain English, no markdown, no bullet lists, no emoji. Two to four sentences " +
+            "for a money question; one or two for anything else."
 }

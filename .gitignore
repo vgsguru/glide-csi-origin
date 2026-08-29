@@ -1,11 +1,57 @@
+# --- secrets -----------------------------------------------------------------
+# Nothing carrying a live credential belongs in a public repo. The runtime
+# copies are generated from local config that never leaves this machine.
 .access_token
+.env
+*.local.properties
+android/local.properties
+android/app/glide-release.jks
+quest/glide-release.jks
+web/public/vr/config.js
+
+# --- build output ------------------------------------------------------------
+# Gradle caches and compiled artifacts were 88% of this repo, and the .dex and
+# .class files inside them embed whatever constants the source had at the time.
+build/
+android/build/
+android/app/build/
+android/.gradle/
+android/.kotlin/
+quest/build/
+quest/app/build/
+quest/.gradle/
+.gradle/
+*.apk
+*.aab
+*.dex
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+!quest/gradle/wrapper/gradle-wrapper.jar
+
+# --- web ---------------------------------------------------------------------
+node_modules/
 web/dist/
+dist/
+.firebase/
+*.cache
+
+# --- python ------------------------------------------------------------------
 backend/venv/
 backend/glide.db
 backend/test_glide.db
-android/local.properties
-android/app/glide-release.jks
-node_modules/
 __pycache__/
 *.pyc
-.env
+
+# --- os / editor -------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.log
+
+# --- vendored toolchain ------------------------------------------------------
+# A JDK and a Gradle distribution were sitting in android/. They are local
+# downloads, not source, and GitHub rejects files over 100 MB.
+android/jdk*/
+android/*.zip
+android/gradle.zip
+android/jdk17.zip

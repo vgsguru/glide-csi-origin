@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<paths>
-    <!-- Bill photos are written to our own cache and shared with the camera
-         app through FileProvider; nothing is exposed outside the app. -->
-    <cache-path name="bills" path="bills/" />
-</paths>

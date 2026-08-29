@@ -44,6 +44,13 @@ object SmsAnalyzer {
     private const val MIN_OBLIGATION_AMOUNT = 50.0
 
     /**
+     * After this long, cash still unaccounted for is very unlikely to be sitting
+     * in a wallet -- it was spent and never logged. Saying so keeps the balance
+     * honest instead of quietly overstating how much cash you still hold.
+     */
+    private const val CASH_AGING_DAYS = 14
+
+    /**
      * @param messages the full read, which covers [OBLIGATION_LOOKBACK_DAYS]
      * @param windowDays the period the totals and categories describe
      *
@@ -94,20 +101,76 @@ object SmsAnalyzer {
         val credits = deduped.filter { it.isCredit }
         val debits = deduped.filter { !it.isCredit }
         val totalIn = credits.sumOf { it.amount }
-        val totalOut = debits.sumOf { it.amount }
+
+        // --- cash reconciliation -------------------------------------------
+        // An ATM withdrawal moves money out of the bank; a cash purchase moves
+        // it out of the wallet. Counting both as spending books the same rupee
+        // twice, so purchases are netted against the pool the withdrawal made.
+        val withdrawals = debits.filter { it.channel == "ATM" }
+        val cashPurchases = debits.filter { it.channel == "CASH" }
+        val withdrawn = withdrawals.sumOf { it.amount }
+        val cashSpent = cashPurchases.sumOf { it.amount }
+
+        val allocated = minOf(cashSpent, withdrawn)
+        val unallocated = (withdrawn - allocated).coerceAtLeast(0.0)
+        // Cash logged beyond what was withdrawn is ordinary spending: it came
+        // from somewhere this app never saw.
+        val cashBeyondPool = (cashSpent - withdrawn).coerceAtLeast(0.0)
+
+        val agingCutoff = System.currentTimeMillis() - CASH_AGING_DAYS * 86_400_000L
+        val oldestUnreconciled = withdrawals
+            .filter { it.occurredAt < agingCutoff }
+            .minOfOrNull { it.occurredAt }
+        val aged = if (oldestUnreconciled != null) unallocated else 0.0
+
+        val cash = CashPosition(
+            withdrawn = withdrawn,
+            allocated = allocated,
+            unallocated = unallocated,
+            aged = aged,
+            withdrawalCount = withdrawals.size,
+            purchaseCount = cashPurchases.size,
+            oldestUnreconciledAt = if (unallocated > 0) oldestUnreconciled else null,
+            agingDays = CASH_AGING_DAYS,
+        )
+
+        // Money that actually left the bank: everything except cash purchases,
+        // which are already represented by their withdrawal. Anything spent in
+        // cash beyond the pool is added back, since no withdrawal covers it.
+        val nonCashOut = debits.filter { it.channel != "CASH" }.sumOf { it.amount }
+        val totalOut = nonCashOut + cashBeyondPool
 
         // --- category segregation -----------------------------------------
-        val byCategory = debits.groupBy { it.category }
-        val categories = byCategory.map { (name, rows) ->
-            val amount = rows.sumOf { it.amount }
-            CategoryTotal(
-                category = name,
-                amount = amount,
-                count = rows.size,
-                share = if (totalOut > 0) amount / totalOut else 0.0,
-                essential = name in ESSENTIAL,
-            )
-        }.sortedByDescending { it.amount }
+        // Withdrawals do not belong to a spending category on their own; the
+        // cash purchases drawn from them do, and the remainder is named plainly.
+        val categorised = debits.filter { it.channel != "ATM" }
+        val byCategory = categorised.groupBy { it.category }.toMutableMap()
+
+        val categories = buildList {
+            byCategory.forEach { (name, rows) ->
+                add(
+                    CategoryTotal(
+                        category = name,
+                        amount = rows.sumOf { it.amount },
+                        count = rows.size,
+                        share = 0.0,
+                        essential = name in ESSENTIAL,
+                    )
+                )
+            }
+            if (unallocated > 0) {
+                add(
+                    CategoryTotal(
+                        category = if (aged > 0) "Cash spent, not logged" else "Cash in hand",
+                        amount = unallocated,
+                        count = withdrawals.size,
+                        share = 0.0,
+                        essential = false,
+                    )
+                )
+            }
+        }.map { it.copy(share = if (totalOut > 0) it.amount / totalOut else 0.0) }
+            .sortedByDescending { it.amount }
 
         val discretionary = categories.filter { it.category in DISCRETIONARY }.sumOf { it.amount }
 
@@ -143,6 +206,7 @@ object SmsAnalyzer {
             dailyRunRate = totalOut / windowDays.coerceAtLeast(1),
             averageConfidence = deduped.sumOf { it.confidence } / deduped.size,
             lowConfidenceCount = deduped.count { it.confidence < 0.85 },
+            cash = cash,
         )
     }
 

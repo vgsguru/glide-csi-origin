@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<network-security-config>
-    <!-- The backend runs on the developer's own machine over plain HTTP on the
-         LAN, so cleartext is permitted for private ranges only. -->
-    <base-config cleartextTrafficPermitted="true" />
-</network-security-config>

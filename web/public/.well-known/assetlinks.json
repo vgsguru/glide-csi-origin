@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.glide.vr",
+      "sha256_cert_fingerprints": ["2A:8D:6F:4F:9A:D3:48:75:28:13:02:66:57:A9:0C:7A:2C:52:FD:98:CB:98:1F:34:6A:5E:08:8B:45:F4:B9:4D"]
+    }
+  }
+]

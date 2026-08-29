@@ -211,6 +211,25 @@ private fun buildInsights(
         }
     }
 
+    // --- cash that never got logged ---------------------------------------
+    if (analysis.cash.aged > 0) {
+        insights.add(
+            LocalInsight(
+                title = "${formatCurrency(analysis.cash.aged)} of cash is unaccounted for",
+                body = "You withdrew ${formatCurrency(analysis.cash.withdrawn)} and have logged " +
+                    "${formatCurrency(analysis.cash.allocated)} against it. The rest left more than " +
+                    "${analysis.cash.agingDays} days ago, so it is counted as spending rather than " +
+                    "cash you still hold.",
+                reasoning = "withdrawn ${formatCurrency(analysis.cash.withdrawn)} − logged " +
+                    "${formatCurrency(analysis.cash.allocated)}, oldest unreconciled " +
+                    "${analysis.cash.daysSinceOldest ?: 0} days ago",
+                icon = Icons.Outlined.WarningAmber,
+                tint = colors.warning,
+                kind = "information",
+            )
+        )
+    }
+
     // --- capture quality ---------------------------------------------------
     if (analysis.lowConfidenceCount > 0) {
         insights.add(

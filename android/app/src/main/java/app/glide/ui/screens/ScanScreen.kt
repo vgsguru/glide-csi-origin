@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.*
@@ -22,7 +23,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.glide.ScanState
+import app.glide.data.CashPosition
 import app.glide.ui.components.*
 import app.glide.ui.theme.GlideTheme
 import app.glide.ui.theme.RadiusLarge
@@ -41,6 +44,7 @@ import java.util.Locale
 @Composable
 fun ScanScreen(
     scan: ScanState,
+    cash: CashPosition,
     manualCount: Int,
     onPickImage: () -> Unit,
     onTakePhoto: () -> Unit,
@@ -70,6 +74,68 @@ fun ScanScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.muted,
             )
+        }
+
+        Surface(
+            shape = RoundedCornerShape(RadiusLarge),
+            color = colors.glass,
+            border = androidx.compose.foundation.BorderStroke(1.dp, colors.glassBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Outlined.AccountBalanceWallet,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Money Bucket",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+                
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        "Unallocated Cash: ${formatCurrency(cash.unallocated)}",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        "When you withdraw cash, it sits here. Scanning cash bills automatically deducts from this pool.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.muted,
+                        lineHeight = 18.sp
+                    )
+                }
+                
+                if (cash.aged > 0) {
+                    Text(
+                        "Note: ${formatCurrency(cash.aged)} disappeared without logging and was flagged as Discretionary.",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.warning
+                    )
+                }
+                
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    LinearProgressIndicator(
+                        progress = { cash.reconciledShare.toFloat() },
+                        modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = colors.border
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("${formatCurrency(cash.allocated)} Logged", style = MaterialTheme.typography.labelSmall, color = colors.muted)
+                        Text("${formatCurrency(cash.withdrawn)} Withdrawn", style = MaterialTheme.typography.labelSmall, color = colors.muted)
+                    }
+                }
+            }
         }
 
         // ── Capture ───────────────────────────────────────────────────────

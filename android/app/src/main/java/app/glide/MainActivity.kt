@@ -16,7 +16,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +36,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.core.content.FileProvider
 import java.io.File
 import app.glide.voice.SpeechListener
+import app.glide.ui.components.FloatingAssistant
 import app.glide.ui.components.GlassNav
 import app.glide.ui.screens.*
 import app.glide.ui.theme.GlideAppTheme
@@ -96,6 +99,7 @@ fun GlideApp(
     val firebaseStatus by viewModel.firebaseStatus.collectAsState()
     val engineLabel by viewModel.engineLabel.collectAsState()
     val voiceStatus by viewModel.voiceStatus.collectAsState()
+    val authState by viewModel.auth.collectAsState()
     // Speech recognition lives here rather than in the ViewModel: SpeechRecognizer
     // must be created and driven on the main thread.
     val context = LocalContext.current
@@ -137,7 +141,7 @@ fun GlideApp(
                 onPartial = { partialSpeech = it },
                 onResult = { spoken ->
                     partialSpeech = ""
-                    viewModel.send(spoken)
+                    viewModel.send(spoken, fromMic = true)
                 },
                 onError = { partialSpeech = it },
                 onEnd = { listening = false },
@@ -148,6 +152,17 @@ fun GlideApp(
     }
 
     DisposableEffect(Unit) { onDispose { speech.stop() } }
+
+    // The assistant is global: one controller, reachable from every screen.
+    val conversation = remember { viewModel.attachConversation(speech) }
+    val convoState by conversation.state.collectAsState()
+
+    fun startConversation() {
+        val granted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        if (granted) conversation.start() else onRequestMic { ok -> if (ok) conversation.start() }
+    }
 
     // Pull history and live suggestion chips when the chat tab opens.
     LaunchedEffect(screen) {
@@ -175,6 +190,21 @@ fun GlideApp(
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
         when (screen) {
+            Screen.Auth -> AuthScreen(
+                auth = authState,
+                onSignIn = viewModel::signIn,
+                onSignUp = viewModel::signUp,
+                onContinueWithoutAccount = viewModel::continueAsGuest,
+            )
+
+            Screen.Onboarding -> OnboardingScreen(
+                windowDays = windowDays,
+                bufferFloor = bufferFloor,
+                onWindowDaysChange = viewModel::setWindowDays,
+                onBufferFloorChange = viewModel::setBufferFloor,
+                onFinish = viewModel::finishOnboarding,
+            )
+
             Screen.Permission -> PermissionScreen(
                 onGrant = {
                     onRequestPermission { granted ->
@@ -208,6 +238,7 @@ fun GlideApp(
 
             Screen.Scan -> ScanScreen(
                 scan = scanState,
+                cash = analysis.cash,
                 manualCount = manualCount,
                 onPickImage = {
                     pickImage.launch(
@@ -225,6 +256,8 @@ fun GlideApp(
 
             Screen.Profile -> ProfileScreen(
                 analysis = analysis,
+                auth = authState,
+                cloudSynced = sync.cloudSynced,
                 voice = voiceStatus,
                 engineLabel = engineLabel,
                 bufferFloor = bufferFloor,
@@ -235,16 +268,32 @@ fun GlideApp(
                 onPreviewVoice = {
                     viewModel.speak("Hello, I am Glide. I read your bank messages on this phone and answer from your own numbers.")
                 },
+                onSignOut = viewModel::signOut,
             )
         }
 
-        // The floating glass pill, hidden until permission is settled.
-        if (screen != Screen.Permission) {
+        // Nav and the assistant belong to the app proper, not to the gates in
+        // front of it: sign-in, onboarding and the permission rationale.
+        if (screen !in setOf(Screen.Auth, Screen.Onboarding, Screen.Permission)) {
             GlassNav(
                 current = screen,
                 onSelect = viewModel::navigate,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
+
+            // Sits above the nav, on top of whatever screen is showing.
+            if (screen != Screen.Chat) {
+                FloatingAssistant(
+                    state = convoState,
+                    engineLabel = engineLabel,
+                    onStart = { startConversation() },
+                    onStop = conversation::stop,
+                    onBargeIn = conversation::bargeIn,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp, bottom = 96.dp),
+                )
+            }
         }
     }
 }

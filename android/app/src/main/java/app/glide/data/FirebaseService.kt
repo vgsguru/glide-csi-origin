@@ -69,12 +69,12 @@ class FirebaseService(context: Context) {
     suspend fun linkEmail(email: String, password: String): Result<String> {
         val auth = this.auth ?: return Result.failure(IllegalStateException("Firebase not configured"))
         return try {
-            val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(email, password)
             val current = auth.currentUser
             val result = if (current != null && current.isAnonymous) {
+                val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(email, password)
                 current.linkWithCredential(credential).await()
             } else {
-                auth.signInWithEmailAndPassword(email, password).await()
+                auth.createUserWithEmailAndPassword(email, password).await()
             }
             Result.success(result.user?.uid ?: "")
         } catch (e: Exception) {
@@ -103,7 +103,7 @@ class FirebaseService(context: Context) {
      * per-merchant rows leave the device. Reading the inbox is a big ask, so
      * the cloud copy stays as small as it can while still being useful.
      */
-    suspend fun syncSummary(analysis: SmsAnalysis): Result<Unit> {
+    suspend fun syncSummary(analysis: SmsAnalysis, bufferFloor: Double): Result<Unit> {
         val db = firestore ?: return Result.failure(IllegalStateException("Firestore not configured"))
         val uid = this.uid ?: return Result.failure(IllegalStateException("Not signed in"))
         return try {
@@ -118,6 +118,9 @@ class FirebaseService(context: Context) {
                 "discretionary" to analysis.discretionary,
                 "essential" to analysis.essential,
                 "dailyRunRate" to analysis.dailyRunRate,
+                // The headset recomputes safe-to-spend from this, so the two
+                // devices can never disagree about the one number that matters.
+                "bufferFloor" to bufferFloor,
                 "averageConfidence" to analysis.averageConfidence,
                 "incomeP10" to analysis.income.p10,
                 "incomeP50" to analysis.income.p50,

@@ -201,6 +201,71 @@ fun DashboardScreen(
             }
         }
 
+        // ── Cash reconciliation ───────────────────────────────────────────
+        if (analysis.cash.hasCash) {
+            item {
+                GlassCard(Modifier.fillMaxWidth()) {
+                    SectionTitle("Cash", formatCurrency(analysis.cash.withdrawn) + " withdrawn")
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "An ATM withdrawal is not spending yet — it is cash moved into your " +
+                            "pocket. Scanning bills tells Glide where it went.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.muted,
+                    )
+                    Spacer(Modifier.height(14.dp))
+
+                    // How much of the pool has been accounted for.
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(colors.secondary)
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(analysis.cash.reconciledShare.toFloat())
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(colors.positive)
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        MiniStat(
+                            "Accounted for",
+                            formatCurrency(analysis.cash.allocated),
+                            Modifier.weight(1f),
+                        )
+                        MiniStat(
+                            if (analysis.cash.aged > 0) "Unlogged" else "Still in hand",
+                            formatCurrency(analysis.cash.unallocated),
+                            Modifier.weight(1f),
+                        )
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        when {
+                            analysis.cash.unallocated <= 0 ->
+                                "Every rupee withdrawn has a bill against it."
+                            analysis.cash.aged > 0 ->
+                                "${formatCurrency(analysis.cash.aged)} has been unaccounted for over " +
+                                    "${analysis.cash.agingDays} days, so it is counted as spending " +
+                                    "Glide could not categorise."
+                            else ->
+                                "${formatCurrency(analysis.cash.unallocated)} is treated as cash you " +
+                                    "still hold. Scan a bill to place it."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (analysis.cash.aged > 0) colors.warning else colors.muted,
+                    )
+                }
+            }
+        }
+
         // ── Discovered obligations ────────────────────────────────────────
         if (analysis.obligations.isNotEmpty()) {
             item {

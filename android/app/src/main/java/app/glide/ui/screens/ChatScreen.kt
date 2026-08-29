@@ -257,50 +257,40 @@ fun ChatScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            Spacer(Modifier.width(8.dp))
-
-            // Mic: tap to dictate, tap again to stop.
-            Box(
-                Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(if (listening) colors.negative.copy(alpha = 0.20f) else colors.secondary)
-                    .clickable(enabled = !busy) {
-                        if (listening) onStopListening() else onStartListening()
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    if (listening) Icons.Filled.Stop else Icons.Filled.Mic,
-                    contentDescription = if (listening) "Stop listening" else "Speak",
-                    tint = if (listening) colors.negative else MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(20.dp),
+        Spacer(Modifier.width(8.dp))
+        Box(
+            Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(
+                    if (listening) MaterialTheme.colorScheme.error
+                    else if (input.isNotBlank() && !busy) MaterialTheme.colorScheme.primary
+                    else colors.secondary
                 )
-            }
-
-            Spacer(Modifier.width(8.dp))
-            Box(
-                Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(
-                        if (input.isBlank() || busy) colors.secondary
-                        else MaterialTheme.colorScheme.primary
-                    )
-                    .clickable(enabled = input.isNotBlank() && !busy) {
+                .clickable(enabled = !busy || listening) {
+                    if (listening) {
+                        onStopListening()
+                    } else if (input.isNotBlank()) {
                         onSend(input)
                         input = ""
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "Send",
-                    tint = if (input.isBlank() || busy) colors.muted else MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(19.dp),
-                )
-            }
+                    } else {
+                        onStartListening()
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                if (listening) Icons.Filled.Stop
+                else if (input.isNotBlank()) Icons.AutoMirrored.Filled.Send
+                else Icons.Filled.Mic,
+                contentDescription = if (listening) "Stop" else if (input.isNotBlank()) "Send" else "Mic",
+                tint = if (listening) MaterialTheme.colorScheme.onError
+                       else if (input.isBlank() || busy) colors.muted 
+                       else MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(if (input.isNotBlank() && !listening) 19.dp else 24.dp),
+            )
         }
+    }
     }
 }
 

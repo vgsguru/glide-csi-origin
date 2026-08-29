@@ -1,0 +1,39 @@
+{
+  "packageId": "app.glide.vr",
+  "host": "manage-buddy.web.app",
+  "name": "Glide VR",
+  "launcherName": "Glide VR",
+  "display": "standalone",
+  "themeColor": "#141414",
+  "themeColorDark": "#141414",
+  "navigationColor": "#141414",
+  "navigationColorDark": "#141414",
+  "navigationDividerColor": "#141414",
+  "navigationDividerColorDark": "#141414",
+  "backgroundColor": "#141414",
+  "enableNotifications": false,
+  "startUrl": "/vr/",
+  "iconUrl": "https://manage-buddy.web.app/vr/icons/icon-512.png",
+  "maskableIconUrl": "https://manage-buddy.web.app/vr/icons/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./glide-release.jks",
+    "alias": "glide"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://manage-buddy.web.app/vr/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": true,
+  "fullScopeUrl": "https://manage-buddy.web.app/vr/",
+  "minSdkVersion": 23,
+  "orientation": "any"
+}

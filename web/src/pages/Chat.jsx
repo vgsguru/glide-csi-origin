@@ -212,7 +212,7 @@ export default function Chat({ theme = 'dark' }) {
                 className="p-2 text-[var(--muted-foreground)] opacity-40"
                 disabled
               >
-                <Mic className="h-5 w-5" />
+                <Logo theme={theme} size={20} />
               </button>
               <button
                 onClick={() => send()}
